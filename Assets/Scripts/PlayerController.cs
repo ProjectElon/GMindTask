@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -5,7 +6,10 @@ using UnityEngine.Rendering;
 
 public class PlayerController : MonoBehaviour
 {
-    [SerializeField] private float _maxSpeed = 10.0f;
+    public event EventHandler OnJump;
+
+    [SerializeField] private float _maxMoveSpeed = 10.0f;
+    [SerializeField] private float _maxMoveSpeedInAir = 5.0f;
     [SerializeField] private float _accelerationAmount = 7.0f;
     [SerializeField] private float _deccelerationAmount = 7.0f;
 
@@ -28,6 +32,11 @@ public class PlayerController : MonoBehaviour
     private bool _wasGrounded;
     private float _gravityScale;
 
+    public bool IsLookingLeft { get; private set; }
+
+    public float MoveSpeed => Mathf.Abs(_rigidbody2D.velocity.x);
+    public bool IsFalling => _isFalling;
+
     private void Awake()
     {
         _rigidbody2D = GetComponent<Rigidbody2D>();
@@ -47,6 +56,11 @@ public class PlayerController : MonoBehaviour
         }
 
         _moveInput = Input.GetAxis("Horizontal");
+
+        if (Mathf.Abs(_moveInput) > 0.0f)
+        {
+            IsLookingLeft = _moveInput < 0.0f;
+        }
 
         bool isGrounded = Physics2D.OverlapBox(_overlapBoxTransform.position, _overlapBoxTransform.localScale, 0, _groundLayer);
         if (isGrounded)
@@ -70,7 +84,7 @@ public class PlayerController : MonoBehaviour
 
         if (Input.GetKeyUp(KeyCode.Space))
         {
-            if (_rigidbody2D.velocity.y > 0.0f)
+            if (_rigidbody2D.velocity.y > 0.0f && _isJumping)
             {
                 _rigidbody2D.AddForce(Vector2.down * _rigidbody2D.velocity.y * _jumpCutMultiplier, ForceMode2D.Impulse);
             }
@@ -84,6 +98,7 @@ public class PlayerController : MonoBehaviour
             _wasGrounded = true;
             _lastGroundedTime = 0.0f;
             _lastJumpTime = 0.0f;
+            OnJump.Invoke(this, EventArgs.Empty);
         }
 
         _isFalling = _rigidbody2D.velocity.y < 0.0f;
@@ -99,7 +114,13 @@ public class PlayerController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        float targetSpeed = _moveInput * _maxSpeed;
+        float maxMoveSpeed = _maxMoveSpeed;
+
+        if (_isJumping)
+        {
+            maxMoveSpeed = _maxMoveSpeedInAir;
+        }
+        float targetSpeed = _moveInput * maxMoveSpeed;
         float speedDifferance = targetSpeed - _rigidbody2D.velocity.x;
         
         float accelration = 0.0f;
@@ -120,7 +141,7 @@ public class PlayerController : MonoBehaviour
         bool isStopping = Mathf.Abs(_moveInput) < 0.01f;
         if (isStopping)
         {
-            float frictionAmount = 0.2f;
+            float frictionAmount = 0.25f;
             Vector2 MoveDirection = Vector2.right * Mathf.Sign(_rigidbody2D.velocity.x);
             float stopAmount = Mathf.Min(frictionAmount, Mathf.Abs(_rigidbody2D.velocity.x));
             _rigidbody2D.AddForce(stopAmount * -MoveDirection, ForceMode2D.Impulse);
