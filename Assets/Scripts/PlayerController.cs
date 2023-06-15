@@ -45,6 +45,11 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
+        if (!GameManager.Instance.IsGameRunning)
+        {
+            return;
+        }
+
         if (_lastGroundedTime > 0.0f)
         {
             _lastGroundedTime -= Time.deltaTime;
@@ -141,7 +146,7 @@ public class PlayerController : MonoBehaviour
         bool isStopping = Mathf.Abs(_moveInput) < 0.01f;
         if (isStopping)
         {
-            float frictionAmount = 0.25f;
+            float frictionAmount = 1.0f;
             Vector2 MoveDirection = Vector2.right * Mathf.Sign(_rigidbody2D.velocity.x);
             float stopAmount = Mathf.Min(frictionAmount, Mathf.Abs(_rigidbody2D.velocity.x));
             _rigidbody2D.AddForce(stopAmount * -MoveDirection, ForceMode2D.Impulse);
